@@ -548,8 +548,14 @@ function buildSubTeamsList (context, digit) {
   Object.keys(context).forEach((key) => {
     if (key.substring(0, 6).toLowerCase() === subTeam) {
       const name = context[key];
-      const keyId = key.substring(3);
-      let escPolicyName = ''; // Not used, but kept for simplicity
+      const keyId = key.substring(6);
+      let escPolicyName;
+
+      Object.keys(context).forEach((key) => {
+        if ((key.substring(0, 9).toLowerCase() === 'esc_pol' + subTeam.substring(4)) && (key.substring(9) === keyId)) {
+          escPolicyName = context[key];
+        }
+      });
 
       arrayOfTeams.unshift(
         {
@@ -558,9 +564,9 @@ function buildSubTeamsList (context, digit) {
         }
       );
       arrayOfTeams.sort((a, b) => (a.name > b.name) ? 1 : -1);
+      arrayOfTeams.reverse();
     }
   });
-
   return arrayOfTeams;
 }
 
