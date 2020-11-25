@@ -401,9 +401,12 @@ function teamsMenu (twiml, context, event, payload) {
         // these teams will be used instead of pulling a list of teams from VictorOps
         // 
         if (NUMBER_OF_MENUS == 3) {
-          // Always use the sub-teams list
+          // Use the sub-teams list
           teamsArray = buildSubTeamsList(context, Digits)
-        } else if (_.isEmpty(buildManualTeamList(context))) {
+        } else {
+          teamsArray = buildManualTeamList(context)
+        }
+        if (_.isEmpty(teamsArray)) {
           teamsArray = JSON.parse(response.body)
           .map(team => {
             return {
@@ -412,8 +415,7 @@ function teamsMenu (twiml, context, event, payload) {
             };
           });
         } else {
-          teamsArray = buildManualTeamList(context)
-          .map(team => {
+          teamsArray = teamsArray.map(team => {
             const lookupResult = lookupTeamSlug(team.name, JSON.parse(response.body));
 
             if (lookupResult.teamExists) {
@@ -433,6 +435,8 @@ function teamsMenu (twiml, context, event, payload) {
             }
           });
         }
+        
+        log('XXXXXXXX', teamsArray)
 
         if (teamLookupFail) {
           return;
@@ -604,6 +608,7 @@ function buildManualTeamList (context) {
 // Gets the team slug for a team if it exists
 function lookupTeamSlug (teamName, teamList) {
   for (let team of teamList) {
+    log('XXXXX: ' + team.name, teamName)
     if (team.name === teamName) {
       return {
         teamExists: true,
