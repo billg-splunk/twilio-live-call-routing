@@ -3,7 +3,17 @@
 // https://github.com/victorops/twilio-live-call-routing/blob/master/LICENSE
 // ==========================================================================
 //
-// Making changes to allow for a multi-level menu.
+// Changes to allow for a two-level menu.
+// Alpha
+//   Abe
+//   Army
+// Beta
+//   Bob
+//   Broom
+// Charlie
+//   Christopher
+//   Candy
+//
 // Key changes:
 // - NUMBER_OF_MENUS = 3 will use this new custom option
 // - Setup you menus as follows
@@ -13,6 +23,9 @@
 // NOTE: This was only tested for this 2-level setup, and did not test
 //       all permutations of other options (NO_VOICEMAIL, NO_CALL, etc.).
 //       It is essentially a customization of NUMBER_OF_MENUS=1.
+//       If you are not using this for 2-level menus please use the base
+//       integration code found at:
+//       https://github.com/victorops/twilio-live-call-routing/blob/master/victorops-twilio.js 
 
 const qs = require('qs');
 const got = require('got');
