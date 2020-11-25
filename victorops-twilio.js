@@ -2,6 +2,17 @@
 // Copyright 2017 VictorOps, Inc.
 // https://github.com/victorops/twilio-live-call-routing/blob/master/LICENSE
 // ==========================================================================
+//
+// Making changes to allow for a multi-level menu.
+// Key changes:
+// - NUMBER_OF_MENUS = 3 will use this new custom option
+// - Setup you menus as follows
+// - Top-level should be labeled TOP_1, TOP_2, TOP_3, etc.
+// - Second-level should be labeled TEAM_1_1, TEAM_1_2, TEAM_1_3, etc.
+//
+// NOTE: This was only tested for this 2-level setup, and did not test
+//       all permutations of other options (NO_VOICEMAIL, NO_CALL, etc.).
+//       It is essentially a customization of NUMBER_OF_MENUS=1.
 
 const qs = require('qs');
 const got = require('got');
@@ -81,6 +92,8 @@ function handler (context, event, callback) {
       break;
     case '2':
       break;
+    case '3':
+      break;
     default:
       context.NUMBER_OF_MENUS = '0';
       break;
@@ -135,6 +148,8 @@ function main (twiml, context, event, payload) {
         return teamsMenu(twiml, context, event, payload);
       case '2':
         return callOrMessage(twiml, context, payload);
+      case '3':
+        return topTeamsMenu(twiml, context, event, payload);
       default:
         return teamsMenu(twiml, context, event, payload);
     }
@@ -143,6 +158,8 @@ function main (twiml, context, event, payload) {
   switch (runFunction) {
     case 'teamsMenu':
       return teamsMenu(twiml, context, event, payload);
+    case 'topTeamsMenu':
+      return topTeamsMenu(twiml, context, event, payload);
     case 'assignTeam':
       return assignTeam(twiml, context, event, payload);
     case 'buildOnCallList':
@@ -215,6 +232,120 @@ function generateCallbackURI (context, json) {
   const payloadString = JSON.stringify(json);
 
   return `https://${DOMAIN_NAME}/victorops-live-call-routing?${qs.stringify({payloadString})}`;
+}
+
+// Menu to select team to contact for on-call or leaving a message
+function topTeamsMenu (twiml, context, event, payload) {
+  log('topTeamsMenu', event);
+  return new Promise((resolve, reject) => {
+    const {API_HOST, headers, messages, NUMBER_OF_MENUS} = context;
+    let {Digits, From} = event;
+    Digits = parseInt(Digits);
+    const {callerId, fromCallorMessage, voice} = payload;
+    let {goToVM} = payload;
+
+    // Repeats the call or message menu if caller pressed 0
+    if (Digits === 0) {
+      twiml.redirect(
+        generateCallbackURI(
+          context,
+          {callerId}
+        )
+      );
+
+      resolve(twiml);
+    // Repeats the call or message menu if caller did not enter a valid response
+    } else if (fromCallorMessage === true && Digits !== 1 && Digits !== 2) {
+      twiml.say(
+        {voice},
+        `${messages.invalidResponse}`
+      );
+      twiml.redirect(
+        generateCallbackURI(
+          context,
+          {callerId}
+        )
+      );
+
+      resolve(twiml);
+    } else {
+      got(
+        `https://${API_HOST}/api-public/v1/team`,
+        {headers}
+      )
+      .then(response => {
+        let teamsArray;
+        let teamLookupFail = false;
+
+        if (Digits === 2) {
+          goToVM = true;
+          realCallerId = From;
+        }
+
+        // If Twilio configure has any keys starting with 'TEAM',
+        // these teams will be used instead of pulling a list of teams from VictorOps
+        
+        //teamsArray = buildTopTeamsList(context)
+        teamsArray = buildManualTeamList(context)
+        
+        // An error message is read and the call ends if there are no teams available
+        if (teamsArray.length === 0) {
+          twiml.say(
+            {voice},
+            `${messages.noTeamsError} ${messages.goodbye}`
+          );
+        // Generates the menu of teams to prompt the caller to make a selection
+        } else {
+          let menuPrompt = 'Please press';
+
+          teamsArray.forEach((team, i, array) => {
+            menuPrompt += ` ${i + 1} for ${team.name}.`;
+          });
+
+          if (NUMBER_OF_MENUS === '3') {
+            menuPrompt = `${messages.greeting} ${menuPrompt}`;
+          }
+
+          twiml.gather(
+            {
+              input: 'dtmf',
+              timeout: 5,
+              action: generateCallbackURI(
+                context,
+                {
+                  callerId,
+                  goToVM,
+                  runFunction: 'teamsMenu',
+                  teamsArray
+                }
+              ),
+              numDigits: teamsArray.length.toString().length
+            }
+          )
+          .say(
+            {voice},
+            `${menuPrompt} ${messages.zeroToRepeat}`
+          );
+          // If no response is received from the caller, the call ends
+          twiml.say(
+            {voice},
+            `${messages.noResponse} ${messages.goodbye}`
+          );
+        }
+
+        resolve(twiml);
+      })
+      .catch(err => {
+        console.log(err);
+        twiml.say(
+          {voice},
+          `${messages.noTeamsError} ${messages.goodbye}`
+        );
+
+        resolve(twiml);
+      });
+    }
+  });
 }
 
 // Menu to select team to contact for on-call or leaving a message
@@ -376,6 +507,28 @@ function teamsMenu (twiml, context, event, payload) {
       });
     }
   });
+}
+
+// Creates a list of teams for the teamsMenu if there are any keys that begin with 'TEAM' in Twilio configure
+function buildTopTeamsList (context) {
+  log('buildTopTeamsList', context);
+  let arrayOfTeams = [];
+
+  Object.keys(context).forEach((key) => {
+    if (key.substring(0, 3).toLowerCase() === 'top') {
+      const name = context[key];
+      const keyId = key.substring(3);
+
+      arrayOfTeams.unshift(
+        {
+          name
+        }
+      );
+    }
+    // TODO: Sort the array
+  });
+
+  return arrayOfTeams;
 }
 
 // Creates a list of teams for the teamsMenu if there are any keys that begin with 'TEAM' in Twilio configure
