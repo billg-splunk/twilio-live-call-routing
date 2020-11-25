@@ -299,8 +299,6 @@ function topTeamsMenu (twiml, context, event, payload) {
         // these teams will be used instead of pulling a list of teams from VictorOps
         
         teamsArray = buildTopTeamsList(context)
-        //teamsArray = buildManualTeamList(context)
-        log("topTeamsArray", teamsArray)
         
         // An error message is read and the call ends if there are no teams available
         if (teamsArray.length === 0) {
