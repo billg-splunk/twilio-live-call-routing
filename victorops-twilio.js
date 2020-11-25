@@ -285,8 +285,9 @@ function topTeamsMenu (twiml, context, event, payload) {
         // If Twilio configure has any keys starting with 'TEAM',
         // these teams will be used instead of pulling a list of teams from VictorOps
         
-        //teamsArray = buildTopTeamsList(context)
-        teamsArray = buildManualTeamList(context)
+        teamsArray = buildTopTeamsList(context)
+        //teamsArray = buildManualTeamList(context)
+        log("topTeamsArray", teamsArray)
         
         // An error message is read and the call ends if there are no teams available
         if (teamsArray.length === 0) {
@@ -391,14 +392,18 @@ function teamsMenu (twiml, context, event, payload) {
         let teamsArray;
         let teamLookupFail = false;
 
-        if (Digits === 2) {
+        if ((NUMBER_OF_MENUS == 1) && (Digits === 2)) {
           goToVM = true;
           realCallerId = From;
         }
 
         // If Twilio configure has any keys starting with 'TEAM',
         // these teams will be used instead of pulling a list of teams from VictorOps
-        if (_.isEmpty(buildManualTeamList(context))) {
+        // 
+        if (NUMBER_OF_MENUS == 3) {
+          // Always use the sub-teams list
+          teamsArray = buildSubTeamsList(context, Digits)
+        } else if (_.isEmpty(buildManualTeamList(context))) {
           teamsArray = JSON.parse(response.body)
           .map(team => {
             return {
@@ -509,7 +514,7 @@ function teamsMenu (twiml, context, event, payload) {
   });
 }
 
-// Creates a list of teams for the teamsMenu if there are any keys that begin with 'TEAM' in Twilio configure
+// Creates a list of teams for the topMenu if there are any keys that begin with 'TOP' in Twilio configure
 function buildTopTeamsList (context) {
   log('buildTopTeamsList', context);
   let arrayOfTeams = [];
@@ -518,14 +523,42 @@ function buildTopTeamsList (context) {
     if (key.substring(0, 3).toLowerCase() === 'top') {
       const name = context[key];
       const keyId = key.substring(3);
+      let escPolicyName = ''; // Not used for top teams, but kept for simplicity
 
       arrayOfTeams.unshift(
         {
-          name
+          name,
+          escPolicyName
         }
       );
+      arrayOfTeams.sort((a, b) => (a.name > b.name) ? 1 : -1);
     }
-    // TODO: Sort the array
+  });
+
+  return arrayOfTeams;
+}
+
+// Creates a list of teams for the teamsSubMenu if there are any keys that begin with 'TEAM' in Twilio configure
+function buildSubTeamsList (context, digit) {
+  log('buildSubTeamsList', context);
+  var subTeam = 'team_' + digit
+  log('SubTeam', subTeam)
+  let arrayOfTeams = [];
+
+  Object.keys(context).forEach((key) => {
+    if (key.substring(0, 6).toLowerCase() === subTeam) {
+      const name = context[key];
+      const keyId = key.substring(3);
+      let escPolicyName = ''; // Not used, but kept for simplicity
+
+      arrayOfTeams.unshift(
+        {
+          name,
+          escPolicyName
+        }
+      );
+      arrayOfTeams.sort((a, b) => (a.name > b.name) ? 1 : -1);
+    }
   });
 
   return arrayOfTeams;
