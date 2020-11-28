@@ -447,8 +447,6 @@ function teamsMenu (twiml, context, event, payload) {
           });
         }
         
-        log('XXXXXXXX', teamsArray)
-
         if (teamLookupFail) {
           return;
         }
@@ -619,7 +617,6 @@ function buildManualTeamList (context) {
 // Gets the team slug for a team if it exists
 function lookupTeamSlug (teamName, teamList) {
   for (let team of teamList) {
-    log('XXXXX: ' + team.name, teamName)
     if (team.name === teamName) {
       return {
         teamExists: true,
